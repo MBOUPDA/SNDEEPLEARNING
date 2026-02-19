@@ -2,7 +2,7 @@
 numpy
 pandas
 streamlit
-
+altair 
 # Finance data
 yfinance
 
