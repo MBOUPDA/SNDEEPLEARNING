@@ -1,0 +1,22 @@
+
+numpy
+pandas
+streamlit
+
+# Finance data
+yfinance
+
+# Machine Learning
+scikit-learn
+torch
+torchvision
+torchaudio
+neuralprophet
+
+# Visualization
+matplotlib
+plotly
+
+# Utilities
+pillow
+python-dotenv
