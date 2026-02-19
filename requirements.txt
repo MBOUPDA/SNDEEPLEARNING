@@ -1,8 +1,9 @@
 
 numpy
 pandas
+setuptools
 streamlit>=1.35.0
-altair==4.2.2
+altair<5
 # Finance data
 yfinance
 
