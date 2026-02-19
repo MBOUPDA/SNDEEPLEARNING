@@ -2,7 +2,7 @@
 numpy
 pandas
 streamlit
-altair 
+altair<5
 # Finance data
 yfinance
 
