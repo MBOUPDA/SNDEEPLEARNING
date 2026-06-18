@@ -18,6 +18,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 import warnings
+import time
 warnings.filterwarnings('ignore')
 
 # PyTorch imports
@@ -342,33 +343,57 @@ class PyTorchTrainer:
 @st.cache_data(ttl=3600)
 def download_stock_data(ticker='JNJ', period='4y'):
     """Télécharge les données boursières depuis Yahoo Finance"""
-    try:
-        with st.spinner('📊 Téléchargement des données JNJ...'):
-            data = yf.download(ticker, period=period, progress=False)
-            
-            if data.empty:
-                st.error("❌ Aucune donnée téléchargée")
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with st.spinner('📊 Téléchargement des données JNJ...'):
+                data = yf.download(ticker, period=period, progress=False)
+
+                if data.empty:
+                    st.error("❌ Aucune donnée téléchargée")
+                    return None, None
+
+                # Métadonnées via fast_info (moins de requêtes API)
+                stock = yf.Ticker(ticker)
+                try:
+                    fi = stock.fast_info
+                    company_info = {
+                        'name': 'Johnson & Johnson',
+                        'sector': 'Healthcare',
+                        'industry': 'Pharmaceuticals',
+                        'market_cap': getattr(fi, 'market_cap', 0) or 0,
+                        'pe_ratio': 0,
+                        'dividend_yield': 0,
+                        'volume': getattr(fi, 'last_volume', 0) or 0,
+                        'avg_volume': getattr(fi, 'three_month_average_volume', 0) or 0
+                    }
+                except Exception:
+                    company_info = {
+                        'name': 'Johnson & Johnson',
+                        'sector': 'Healthcare',
+                        'industry': 'Pharmaceuticals',
+                        'market_cap': 0,
+                        'pe_ratio': 0,
+                        'dividend_yield': 0,
+                        'volume': 0,
+                        'avg_volume': 0
+                    }
+
+                return data, company_info
+        except Exception as e:
+            err_msg = str(e)
+            if 'Too Many Requests' in err_msg or '429' in err_msg:
+                if attempt < max_retries - 1:
+                    wait = (attempt + 1) * 10
+                    st.warning(f"⏳ Rate limit Yahoo Finance. Nouvelle tentative dans {wait}s... ({attempt+1}/{max_retries})")
+                    time.sleep(wait)
+                else:
+                    st.error("❌ Yahoo Finance rate limit atteint. Veuillez réessayer dans quelques minutes.")
+                    return None, None
+            else:
+                st.error(f"Erreur lors du téléchargement: {err_msg}")
                 return None, None
-            
-            # Métadonnées de l'entreprise
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            
-            company_info = {
-                'name': info.get('longName', 'Johnson & Johnson'),
-                'sector': info.get('sector', 'Healthcare'),
-                'industry': info.get('industry', 'Pharmaceuticals'),
-                'market_cap': info.get('marketCap', 0),
-                'pe_ratio': info.get('trailingPE', 0),
-                'dividend_yield': info.get('dividendYield', 0),
-                'volume': info.get('volume', 0),
-                'avg_volume': info.get('averageVolume', 0)
-            }
-            
-            return data, company_info
-    except Exception as e:
-        st.error(f"Erreur lors du téléchargement: {str(e)}")
-        return None, None
+    return None, None
 
 def prepare_data_pytorch(data, look_back=60, batch_size=32):
     """Prépare les données pour PyTorch"""
